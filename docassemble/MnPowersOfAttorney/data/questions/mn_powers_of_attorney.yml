@@ -1,0 +1,655 @@
+---
+include:
+  - docassemble.AssemblyLine:assembly_line.yml
+  - docassemble.ALAnyState:any_state.yml
+---
+metadata:
+  title: |
+    Powers of Attorney
+  short title: |
+    Powers of Attorney
+  authors:
+    - Quinten Steenhuis
+---
+features:
+  css: docassemble.ALToolbox:al_three_parts_date.css
+---
+mandatory: True
+comment: |
+  Global interview metadata
+variable name: interview_metadata["mn_powers_of_attorney"]
+data:
+  al_weaver_version: "1.10.0a2"
+  generated on: "2023-05-09"
+  title: >-
+    Powers of Attorney
+  short title: >-
+    Powers of Attorney
+  description: |-
+    This interview helps someone in Minnesota give Powers of Attorney to a trusted person.
+  allowed courts: []
+  categories: []
+  typical role: "plaintiff"
+  generate download screen: True
+---
+code: |
+  interview_metadata['main_interview_key'] =  'mn_powers_of_attorney'
+---
+code: |
+  # This controls the default country and list of states in address field questions
+  AL_DEFAULT_COUNTRY = "US"
+---
+code: |
+  # This controls the default state in address field questions
+  AL_DEFAULT_STATE = "MN"
+---
+code: |
+  github_repo_name =  'docassemble-MnPowersOfAttorney'
+---
+code: |
+  interview_short_title = "Give Powers of Attorney to a Trusted Person"
+---
+code: |
+  al_form_type = "other_form" 
+---
+objects:
+  - attorneys: ALPeopleList.using(there_are_any=True)
+  - users: ALPeopleList.using(ask_number=True,target_number=1, complete_attribute=["name.first", "address.address"])
+  - real_estate_items: DAList.using(object_type=DAObject, complete_attribute=["county","description"])
+  - drafter: ALIndividual
+---
+sections:
+  - review_mn_powers_of_attorney: Review your answers
+---
+#################### Interview order #####################
+comment: |
+  Controls order and branching logic for questions specific to this form
+id: interview_order_mn_powers_of_attorney
+code: |
+  # Set the allowed courts for this interview
+  allowed_courts = interview_metadata["mn_powers_of_attorney"]["allowed courts"]
+  nav.set_section("review_mn_powers_of_attorney")
+  user_role = "plaintiff"
+  user_ask_role = "plaintiff"
+  if person_answering == "drafter":
+    drafter.name.first
+  users.gather()
+  set_parts(subtitle=str(users))
+  attorneys.gather()
+  How_long_do_you_want_the_power_of_attorney_to_last
+  if attorneys.number() > 1:
+    aif_acts_independently  
+  set_progress(25)
+  What_can_the_power_of_attorney_decide_for_you
+  if power_real_estate and real_estate_limited:
+    real_estate_items.gather()
+  poa_expires    
+  What_limits_will_the_power_of_attorney_have
+  users[0].address.address
+  set_progress(50)
+  attorneys[0].address.address
+  interview_order_mn_powers_of_attorney = True
+---
+###################### Main order ######################
+comment: |
+  This block includes the logic for standalone interviews.
+  Delete mandatory: True to include in another interview
+mandatory: True
+code: |
+  al_intro_screen
+  mn_powers_of_attorney_intro
+  interview_order_mn_powers_of_attorney
+  signature_date
+  # Store anonymous data for analytics / statistics
+  store_variables_snapshot(
+      persistent=True,
+      data={
+          "zip": showifdef("users[0].address.zip"),
+          "reached_interview_end": True,
+      },
+  )
+  mn_powers_of_attorney_download
+---
+comment: |
+  This question is used to introduce your interview. Please customize
+id: Powers_of_Attorney
+continue button field: mn_powers_of_attorney_intro
+question: |
+  Powers of Attorney
+subquestion: |
+  This interview will help you give powers of attorney to a trusted person. This person can make the decisions for you about your finances that you pick. In Minnesota, this person will be called your "attorney in fact."
+  
+  Before you get started, you should gather:
+  
+  1. The name and address of the person or people you trust and want to give power over your finances.
+  1. The _legal description_ of any property you want to give the person you trust authority over.
+  
+  The interview will help you decide which powers to give to your "attorney-in-fact."
+  
+  When you are finished, you will need to:
+  
+  1. Sign the powers of attorney form in front of a notary.
+  1. Give copies of the powers of attorney form to the person you are giving power and to the bank or anywhere else you want the person to be allowed to make decisions for you.
+  
+  Most people take about 20 minutes to finish this interview.
+---
+id: who answering
+question: |
+  Are you making this power of attorney for yourself or someone else?
+fields:
+  - The power of attorney is for: person_answering
+    datatype: radio
+    choices:
+      - Me: myself
+      - Someone else: drafter
+  - note: |
+      **OK**, write **your own** name and address below. On the next screen, we will
+      ask for the name of the person you are helping.
+  - code: |
+      drafter.name_fields(show_if={"variable": "person_answering", "is": "drafter"})
+  - code: |
+      drafter.address_fields(show_if={"variable": "person_answering", "is": "drafter"})
+---
+id: your name
+sets:
+    - users[0].name.first
+    - users[0].name.last
+    - users[0].name.middle
+    - users[0].name.suffix
+question:  |
+  % if person_answering == "drafter":
+  What is the name of the person you are helping?
+  % else:
+  What is your name?
+  % endif
+fields:
+  - code: |
+      users[0].name_fields()
+---
+id: your address
+sets:
+  - users[0].address.address
+  - users[0].address.city
+  - users[0].address.zip
+  - users[0].address.unit
+  - users[0].address.state
+  - users[0].address.country
+question: |
+  % if person_answering == "drafter":
+  What is the address of the person you are helping?
+  % else:
+  What is your address?
+  % endif
+fields:
+  - code: |
+      users[0].address_fields(country_code=AL_DEFAULT_COUNTRY, default_state=AL_DEFAULT_STATE)      
+---
+id: name of the first attorney in fact
+sets:
+  - attorneys[0].name.first
+  - attorneys[0].name.last
+  - attorneys[0].name.middle
+  - attorneys[0].name.suffix
+question: |
+  Who do you want to give power over your financial decisions?
+subquestion: |
+  The person that you name is called your "attorney-in-fact" in Minnesota.
+  
+  We will ask you later if you want to name more than one person. The additional people
+  can be backup (alternate) decision makers or they can act at the same time as 
+  the first person you name.
+fields:
+  - code: |
+      attorneys[0].name_fields()
+  - An existing address: attorneys[0].address
+    datatype: object_radio
+    choices: |
+      [users[0].address]
+    none of the above: A new address      
+  - code: |
+      attorneys[0].address_fields(country_code=AL_DEFAULT_COUNTRY, default_state=AL_DEFAULT_STATE, show_if={"variable": "attorneys[0].address", "is": None})
+---
+id: another attorney in fact
+question: |
+  Do you want to name another decision maker?
+subquestion: |
+  So far you have named ${ attorneys.complete_elements() }
+fields:
+  - no label: attorneys.there_is_another
+    datatype: yesnoradio
+---
+id: name of the nth attorney in fact
+sets:
+  - attorneys[i].name.first
+  - attorneys[i].name.last
+  - attorneys[i].name.middle
+  - attorneys[i].name.suffix
+question: |
+  Who else do you want to give power over your financial decisions?
+subquestion: |
+  So far you have named ${ attorneys.complete_elements() }
+fields:
+  - code: |
+      attorneys[i].name_fields()
+  - An existing address: attorneys[i].address
+    datatype: object_radio
+    choices: |
+      [users[0].address] + [attorney.address for attorney in attorneys.complete_elements()]
+    none of the above: A new address      
+  - code: |
+      attorneys[i].address_fields(country_code=AL_DEFAULT_COUNTRY, default_state=AL_DEFAULT_STATE, show_if={"variable": "attorneys[i].address", "is": None})
+---
+id: How long do you want the power of attorney to last
+question: |
+  How long do you want the power of attorney to last?
+fields:
+  - How long will the power of attorney last?: expiration_choice
+    datatype: radio
+    choices:
+      - Limited time: limited time
+      - Never expires: unlimited time
+  - "The power of attorney expires on": poa_expiration_date
+    datatype: ThreePartsDate
+    show if:
+      variable: expiration_choice
+      is: "limited time"
+  - "The power of attorney should continue if I am incapacitated": is_durable_poa
+    datatype: yesno
+continue button field: How_long_do_you_want_the_power_of_attorney_to_last
+---
+id: independent authority
+question: |
+  Will each named person be able to make decisions for you at the same time?
+subquestion: |
+  If you make the decision making **independent** then each named person can
+  make decisions for you right now.
+  
+  The default is that ${ attorneys[0] } will be able to make decisions for you
+  right away and ${ comma_and_list(attorneys[1:]) } will only be able to make decisions
+  for you if ${ attorneys[0] } cannot.
+fields:
+  - I want: aif_acts_independently  
+    datatype: radio
+    choices:
+      - Only ${ attorneys[0] } to make decisions for me, unless they are unable to: False
+      - ${ attorneys } to all be able to make decisions for me right away: True
+---
+depends on: expiration_choice
+code: |
+  poa_expires = expiration_choice == "limited time"
+---
+id: What can the power of attorney decide for you
+question: |
+  What can the power of attorney decide for you?
+subquestion: |
+  The attorneys-in-fact that I name will be able to make decisions about:
+fields:
+  - "Real estate": power_real_estate
+    datatype: yesnoradio
+  - Limit to specific properties: real_estate_limited
+    datatype: yesno
+    show if: power_real_estate
+  - "Lawsuits and legal claims": power_claims
+    datatype: yesnoradio
+  - "Bond, share and commodity transactions": power_bond_share_commodity
+    datatype: yesnoradio
+  - "Buy or change insurance": power_insurance
+    datatype: yesnoradio
+  - "Beneficiary transactions": power_beneficiaries
+    datatype: yesnoradio
+  - "Records, reports and statements": power_records
+    datatype: yesnoradio
+  - "Military benefits": power_military_benefits
+    datatype: yesnoradio
+  - "Fiduciary transactions": power_fiduciary
+    datatype: yesnoradio
+  - "Buy and sell my personal property": power_tangible_property
+    datatype: yesnoradio
+  - "Help run my business": power_business
+    datatype: yesnoradio
+  #- "Grant all powers above": power_all_above
+  #  datatype: yesno
+  - "Gift transactions": power_gifts
+    datatype: yesnoradio
+  - "Control over my bank accounts": power_banking
+    datatype: yesnoradio
+  - "Provide for my family": power_family
+    datatype: yesnoradio
+continue button field: What_can_the_power_of_attorney_decide_for_you
+---
+id: What limits will the power of attorney have
+question: |
+  What limits will the power of attorney have?
+fields:
+  - The attorney-in-fact cannot make gifts to themself: authority_gift_to_self
+    datatype: noyes
+  - The attorney-in-fact must tell me regularly how they spend my money and make decisions for me : attorney_must_provide_accounting
+    datatype: yesno
+continue button field: What_limits_will_the_power_of_attorney_have
+---
+code: |
+  real_estate_items.there_are_any = power_real_estate and real_estate_limited
+---
+id: describe real estate
+list collect: True
+question: |
+  What individual properties will the power of attorney be limited to?
+subject: |
+  Name the county where the property is and the **legal description** of the property  
+
+  You can find the legal description on the property deed. Do not use the description 
+  on your real estate tax statement. It should look something like this:
+
+  >  "LOT 10 BLOCK 240 AND N. 30 FT OF LOT
+  >  11 BLOCK 240 COUNTY ..."
+
+fields:
+  - County: real_estate_items[i].county
+    choices:
+      - Aitkin
+      - Anoka
+      - Becker
+      - Beltrami
+      - Benton
+      - Big Stone
+      - Blue Earth
+      - Brown
+      - Carlton
+      - Carver
+      - Cass
+      - Chippewa
+      - Chisago
+      - Clay
+      - Clearwater
+      - Cook
+      - Cottonwood
+      - Crow Wing
+      - Dakota
+      - Dodge
+      - Douglas
+      - Faribault
+      - Fillmore
+      - Freeborn
+      - Goodhue
+      - Grant
+      - Hennepin
+      - Houston
+      - Hubbard
+      - Isanti
+      - Itasca
+      - Jackson
+      - Kanabec
+      - Kandiyohi
+      - Kittson
+      - Koochiching
+      - Lac qui Parle
+      - Lake
+      - Lake of the Woods
+      - Le Sueur
+      - Lincoln
+      - Lyon
+      - Mahnomen
+      - Marshall
+      - Martin
+      - McLeod
+      - Meeker
+      - Mille Lacs
+      - Morrison
+      - Mower
+      - Murray
+      - Nicollet
+      - Nobles
+      - Norman
+      - Olmsted
+      - Otter Tail
+      - Pennington
+      - Pine
+      - Pipestone
+      - Polk
+      - Pope
+      - Ramsey
+      - Red Lake
+      - Redwood
+      - Renville
+      - Rice
+      - Rock
+      - Roseau
+      - Scott
+      - Sherburne
+      - Sibley
+      - St. Louis
+      - Stearns
+      - Steele
+      - Stevens
+      - Swift
+      - Todd
+      - Traverse
+      - Wabasha
+      - Wadena
+      - Waseca
+      - Washington
+      - Watonwan
+      - Wilkin
+      - Winona
+      - Wright
+      - Yellow Medicine
+  - Description of lot: real_estate_items[i].description
+    datatype: area
+    rows: 2
+    help: |
+      Like: _LOT 10 BLOCK 240 AND N. 30 FT OF LOT 11 BLOCK 240 COUNTY ..._
+---
+id: preview mn_powers_of_attorney
+question: |
+  Preview your form before you sign it
+subquestion: |
+  Here is a preview of the form you will sign on the next page.   
+  
+  ${ al_recipient_bundle.as_pdf(key='preview') }
+
+  Click the image to open it in a new tab. Click the "Edit answers" button
+  to edit your answers.
+
+  ${ action_button_html(url_action('review_mn_powers_of_attorney'), label='Edit answers', color='info') }
+  
+  Remember to come back to this window to continue and sign your form.
+continue button field: mn_powers_of_attorney_preview_question    
+---
+code: |
+  signature_fields = []
+---
+id: mn powers of attorney review screen
+event: review_mn_powers_of_attorney
+question: |
+  Review your answers
+review:
+  - Edit: power_real_estate
+    button: |
+      **Real estate**:
+      ${ power_real_estate }
+  - Edit: power_claims
+    button: |
+      **Lawsuits and legal claims**:
+      ${ power_claims }
+  - Edit: attorneys.revisit
+    button: |
+      **Attorneys**
+
+      % for item in attorneys:
+        * ${ item }
+      % endfor
+
+  - Edit: power_bond_share_commodity
+    button: |
+      **Bond, share and commodity transactions**:
+      ${ power_bond_share_commodity }
+  - Edit: power_insurance
+    button: |
+      **Buy or change insurance**:
+      ${ power_insurance }
+  - Edit: power_beneficiaries
+    button: |
+      **Beneficiary transactions**:
+      ${ power_beneficiaries }
+  - Edit: users.revisit
+    button: |
+      **Users**
+
+      % for item in users:
+        * ${ item }
+      % endfor
+  - Edit: authority_gift_to_self
+    button: |
+      **Make gifts to themself**:
+      ${ authority_gift_to_self }
+  - Edit: power_records
+    button: |
+      **Records, reports and statements**:
+      ${ power_records }
+  - Edit: power_military_benefits
+    button: |
+      **Military benefits**:
+      ${ power_military_benefits }
+  - Edit: attorney_must_provide_accounting
+    button: |
+      **Attorney must provide accounting**:
+      ${ attorney_must_provide_accounting }
+  - Edit: power_fiduciary
+    button: |
+      **Fiduciary transactions**:
+      ${ power_fiduciary }
+  - Edit: power_tangible_property
+    button: |
+      **Buy and sell my personal property**:
+      ${ power_tangible_property }
+  - Edit: power_business
+    button: |
+      **Help run my business**:
+      ${ power_business }
+  - Edit: poa_expiration_date
+    button: |
+      **The power of attorney expires on**:
+      ${ poa_expiration_date }
+  - Edit: power_all_above
+    button: |
+      **Grant all powers above**:
+      ${ word(yesno(power_all_above)) }
+  - Edit: real_estate_items
+    button: |
+      **Real estate items**:
+      ${ real_estate_items }
+  - Edit: power_gifts
+    button: |
+      **Gift transactions**:
+      ${ power_gifts }
+  - Edit: poa_expires
+    button: |
+      **The power of attorney is for a limited time**:
+      ${ word(yesno(poa_expires)) }
+  - Edit: is_durable_poa
+    button: |
+      **The power of attorney should continue if I am incapacitated**:
+      ${ word(yesno(is_durable_poa)) }
+  - Edit: aif_acts_independently
+    button: |
+      **Each attorney in fact can act at the same time**:
+      ${ word(yesno(aif_acts_independently)) }
+  - Edit: power_banking
+    button: |
+      **Control over my bank accounts**:
+      ${ power_banking }
+  - Edit: power_family
+    button: |
+      **Provide for my family**:
+      ${ power_family }
+---
+continue button field: attorneys.revisit
+question: |
+  Edit attorneys
+subquestion: |
+  ${ attorneys.table }
+
+  ${ attorneys.add_action() }
+---
+table: attorneys.table
+rows: attorneys
+columns:
+  - Name: |
+      row_item.name.full() if defined("row_item.name.first") else ""
+  - Address: |
+      row_item.address.block() if defined("row_item.address.address") else ""
+edit:
+  - name.first
+  - address.address
+confirm: True
+
+---
+continue button field: users.revisit
+question: |
+  Edit users
+subquestion: |
+  ${ users.table }
+
+  ${ users.add_action() }
+---
+table: users.table
+rows: users
+columns:
+  - Address: |
+      row_item.address.block() if defined("row_item.address.address") else ""
+  - Name: |
+      row_item.name.full() if defined("row_item.name.first") else ""
+edit:
+  - address.address
+  - name.first
+confirm: True
+
+---
+id: download mn_powers_of_attorney
+event: mn_powers_of_attorney_download
+question: |
+  All done
+subquestion: |
+  Thank you ${users}. Your form is ready to download and deliver.
+  
+  View, download and send your form below. Click the "Edit answers" button to fix any mistakes.
+
+  ${ action_button_html(url_action('review_mn_powers_of_attorney'), label='Edit answers', color='info') }
+  
+  
+  ${ al_user_bundle.download_list_html() }
+  
+
+  ${ al_user_bundle.send_button_html(show_editable_checkbox=True) }
+
+progress: 100
+---
+# ALDocument objects specify the metadata for each template
+objects:
+  #- mn_powers_of_attorney_Post_interview_instructions: ALDocument.using(title="Instructions", filename="mn_powers_of_attorney_next_steps.docx", enabled=True, has_addendum=False)
+  - mn_powers_of_attorney_attachment: ALDocument.using(title="Powers of Attorney", filename="mn_powers_of_attorney", enabled=True, has_addendum=False, )
+---
+# Bundles group the ALDocuments into separate downloads, such as for court and for the user
+objects:
+  - al_user_bundle: ALDocumentBundle.using(elements=[mn_powers_of_attorney_attachment], filename="mn_powers_of_attorney", title="All forms to download for your records", enabled=True)
+  - al_recipient_bundle: ALDocumentBundle.using(elements=[mn_powers_of_attorney_attachment],  filename="mn_powers_of_attorney", title="All forms to file", enabled=True)
+---
+# Each attachment defines a key in an ALDocument. We use `i` as the placeholder here so the same template is 
+# used for "preview" and "final" keys, and logic in the template checks the value of 
+# `i` to show or hide the user's signature
+#attachment:
+#  name: Post-interview-Instructions
+#  filename: mn_powers_of_attorney_next_steps
+#  docx template file: mn_powers_of_attorney_next_steps.docx
+#  variable name: mn_powers_of_attorney_Post_interview_instructions[i]
+#  skip undefined: True
+---
+attachment:
+  name: mn powers of attorney
+  filename: Minnesota Powers of Attorney
+  variable name: mn_powers_of_attorney_attachment[i]
+  skip undefined: True
+  docx template file: mn_powers_of_attorney.docx
+
+
+
