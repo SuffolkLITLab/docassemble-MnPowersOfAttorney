@@ -145,6 +145,9 @@ fields:
   - note: |
       **OK**, write **your own** name and address below. On the next screen, we will
       ask for the name of the person you are helping.
+    show if:
+      variable: person_answering
+      is: drafter
   - code: |
       drafter.name_fields(show_if={"variable": "person_answering", "is": "drafter"})
   - code: |
