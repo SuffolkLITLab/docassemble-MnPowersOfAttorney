@@ -59,7 +59,14 @@ objects:
   - drafter: ALIndividual
 ---
 sections:
+  - section_intro: Getting started
+  - section_qualifies: Can you give a Powers of Attorney?
+  - section_user_information: Information about you
+  - section_decision_makers: Your decision makers
+  - section_powers: What your decision makers can do
+  - section_limits: Limits
   - review_mn_powers_of_attorney: Review your answers
+  - mn_powers_of_attorney_download: Download
 ---
 #################### Interview order #####################
 comment: |
@@ -67,27 +74,32 @@ comment: |
 id: interview_order_mn_powers_of_attorney
 code: |
   # Set the allowed courts for this interview
-  allowed_courts = interview_metadata["mn_powers_of_attorney"]["allowed courts"]
-  nav.set_section("review_mn_powers_of_attorney")
+  nav.set_section("section_intro")
   user_role = "plaintiff"
   user_ask_role = "plaintiff"
+  nav.set_section("section_qualifies")
+  grantor_lives_in_minnesota
+  if not (grantor_lives_in_minnesota and grantor_over_18 and grantor_competent):
+    exit_cant_get_poa
+  nav.set_section("section_user_information")
   if person_answering == "drafter":
     drafter.name.first
   users.gather()
   set_parts(subtitle=str(users))
+  nav.set_section("section_decision_makers")
   attorneys.gather()
-  How_long_do_you_want_the_power_of_attorney_to_last
+  aif_acts_independently
   if attorneys.number() > 1:
     aif_acts_independently  
-  set_progress(25)
+  set_progress(50)
+  nav.set_section("section_powers")
   What_can_the_power_of_attorney_decide_for_you
   if power_real_estate and real_estate_limited:
     real_estate_items.gather()
-  poa_expires    
+  nav.set_section("section_limits")
+  poa_expires
   What_limits_will_the_power_of_attorney_have
-  users[0].address.address
-  set_progress(50)
-  attorneys[0].address.address
+  set_progress(90)
   interview_order_mn_powers_of_attorney = True
 ---
 ###################### Main order ######################
@@ -108,6 +120,9 @@ code: |
           "reached_interview_end": True,
       },
   )
+  nav.set_section("review_mn_powers_of_attorney")
+  review_mn_powers_of_attorney
+  nav.set_section("mn_powers_of_attorney_download")
   mn_powers_of_attorney_download
 ---
 comment: |
@@ -132,6 +147,60 @@ subquestion: |
   1. Give copies of the powers of attorney form to the person you are giving power and to the bank or anywhere else you want the person to be allowed to make decisions for you.
   
   Most people take about 20 minutes to finish this interview.
+---
+id: can i get a power of attorney
+question: |
+  Can you give a powers of attorney?
+subquestion: |
+  You can use this form to give power over your own decision making,
+  or a helper can fill it in for the person who is giving power over their
+  decision making.
+
+  This question is about the person who is giving the power over their decision
+  making, regardless of who is using this website.
+
+  Is the person **giving** power to someone else:
+fields:
+  - Living in Minnesota?: grantor_lives_in_minnesota
+    datatype: yesnoradio
+  - Over 18?: grantor_over_18
+    datatype: yesnoradio
+  - Able to make their own decisions about **giving** power to someone else?: grantor_competent
+    datatype: yesnoradio
+---
+id: exit cannot get poa
+event: exit_cant_get_poa
+decoration: hand
+question: |
+  You cannot get a power of attorney
+subquestion: |
+  Before anyone can use this interview to get a powers of attorney form,
+  the person giving power over their decision making must be:
+
+  1. Living in Minnesota
+  1. Over 18, and
+  1. Able to make the decision about giving power to someone else right now (competent)
+
+  % if not grantor_lives_in_minnesota:
+  You said the person giving
+  power over their decision making does not live in Minnesota.
+
+  % endif
+  % if (not grantor_over_18) and (not grantor_competent):
+  You said that the person giving power over their decision making is both under the age of 18
+  and not competent to make this decision.
+  % elif not grantor_over_18:
+  You said the person giving power is not over 18.
+  % elif not grantor_competent:
+  You said the person giving power is not competent to make this decision.
+  % endif
+
+  You cannot use this website to complete a powers of attorney form.
+  You may want to read about [other legal options](https://www.lawhelpmn.org/self-help-library/planning-ahead-elder-law)
+  on the Law Help Minnesota website.
+buttons:
+  - Leave: exit
+    url: https://www.lawhelpmn.org/self-help-library/planning-ahead-elder-law
 ---
 id: who answering
 question: |
@@ -194,9 +263,13 @@ sets:
   - attorneys[0].name.middle
   - attorneys[0].name.suffix
 question: |
+  % if person_answering == "drafter":
+  Who will ${ users[0] } give power over their financial decisions?
+  % else:
   Who do you want to give power over your financial decisions?
+  % endif
 subquestion: |
-  The person that you name is called your "attorney-in-fact" in Minnesota.
+  The person that you name is called an "attorney-in-fact" in Minnesota.
   
   We will ask you later if you want to name more than one person. The additional people
   can be backup (alternate) decision makers or they can act at the same time as 
@@ -228,7 +301,11 @@ sets:
   - attorneys[i].name.middle
   - attorneys[i].name.suffix
 question: |
+  % if person_answering == "drafter":
+  Who else do you want to name as a decision maker?
+  % else:
   Who else do you want to give power over your financial decisions?
+  % endif
 subquestion: |
   So far you have named ${ attorneys.complete_elements() }
 fields:
@@ -258,24 +335,38 @@ fields:
       is: "limited time"
   - "The power of attorney should continue if I am incapacitated": is_durable_poa
     datatype: yesno
-continue button field: How_long_do_you_want_the_power_of_attorney_to_last
+continue button field: aif_acts_independently
 ---
 id: independent authority
 question: |
+  % if person_answering == "drafter":
+  Will each named person be able to make decisions for ${ users.familiar() }
+  at the same time?
+  % else:
   Will each named person be able to make decisions for you at the same time?
+  % endif
 subquestion: |
+  % if person_answering == "drafter":
+  If you make the decision making **independent** then each named person can
+  make decisions for ${ users.familiar() } right now.
+  
+  The default is that ${ attorneys[0] } will be able to make decisions for ${ users.familiar() }
+  right away and ${ comma_and_list(attorneys[1:]) } will only be able to make decisions
+  for ${ users.familiar() } if ${ attorneys[0] } cannot.
+  % else:
   If you make the decision making **independent** then each named person can
   make decisions for you right now.
   
   The default is that ${ attorneys[0] } will be able to make decisions for you
   right away and ${ comma_and_list(attorneys[1:]) } will only be able to make decisions
   for you if ${ attorneys[0] } cannot.
+  % endif
 fields:
   - I want: aif_acts_independently  
     datatype: radio
     choices:
-      - Only ${ attorneys[0] } to make decisions for me, unless they are unable to: False
-      - ${ attorneys } to all be able to make decisions for me right away: True
+      - Only ${ attorneys[0] } to make decisions for ${ users.familiar() if person_answering == "drafter" else "me" }, unless they are unable to: False
+      - ${ attorneys } to all be able to make decisions for ${ users.familiar() if person_answering == "drafter" else "me" } right away: True
 ---
 depends on: expiration_choice
 code: |
@@ -283,7 +374,11 @@ code: |
 ---
 id: What can the power of attorney decide for you
 question: |
-  What can the power of attorney decide for you?
+  % if person_answering == "drafter":
+  What can the people you name decide for ${ users.familiar() }?
+  % else:
+  What can the people you name decide for you?
+  % endif
 subquestion: |
   The attorneys-in-fact that I name will be able to make decisions about:
 fields:
@@ -442,27 +537,11 @@ fields:
     help: |
       Like: _LOT 10 BLOCK 240 AND N. 30 FT OF LOT 11 BLOCK 240 COUNTY ..._
 ---
-id: preview mn_powers_of_attorney
-question: |
-  Preview your form before you sign it
-subquestion: |
-  Here is a preview of the form you will sign on the next page.   
-  
-  ${ al_recipient_bundle.as_pdf(key='preview') }
-
-  Click the image to open it in a new tab. Click the "Edit answers" button
-  to edit your answers.
-
-  ${ action_button_html(url_action('review_mn_powers_of_attorney'), label='Edit answers', color='info') }
-  
-  Remember to come back to this window to continue and sign your form.
-continue button field: mn_powers_of_attorney_preview_question    
----
 code: |
   signature_fields = []
 ---
 id: mn powers of attorney review screen
-event: review_mn_powers_of_attorney
+continue button field: review_mn_powers_of_attorney
 question: |
   Review your answers
 review:
