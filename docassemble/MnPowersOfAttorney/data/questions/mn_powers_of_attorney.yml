@@ -54,6 +54,7 @@ code: |
 ---
 objects:
   - attorneys: ALPeopleList.using(there_are_any=True)
+  - successor_attorneys: ALPeopleList
   - users: ALPeopleList.using(ask_number=True,target_number=1, complete_attribute=["name.first", "address.address"])
   - real_estate_items: DAList.using(object_type=DAObject, complete_attribute=["county","description"])
   - drafter: ALIndividual
@@ -87,10 +88,12 @@ code: |
   users.gather()
   set_parts(subtitle=str(users))
   nav.set_section("section_decision_makers")
+  decision_maker_signpost
   attorneys.gather()
-  aif_acts_independently
   if attorneys.number() > 1:
-    aif_acts_independently  
+    aif_acts_independently
+  expiration_choice
+  successor_attorneys.gather()
   set_progress(50)
   nav.set_section("section_powers")
   What_can_the_power_of_attorney_decide_for_you
@@ -204,13 +207,13 @@ buttons:
 ---
 id: who answering
 question: |
-  Are you making this power of attorney for yourself or someone else?
+  Are you the person who will be **giving** power over your own decision making?
 fields:
-  - The power of attorney is for: person_answering
+  - I am: person_answering
     datatype: radio
     choices:
-      - Me: myself
-      - Someone else: drafter
+      - The person **giving** power over my decisions: myself
+      - Someone else, like an attorney or helper: drafter
   - note: |
       **OK**, write **your own** name and address below. On the next screen, we will
       ask for the name of the person you are helping.
@@ -248,13 +251,39 @@ sets:
   - users[0].address.country
 question: |
   % if person_answering == "drafter":
-  What is the address of the person you are helping?
+  What is the permanent address of the person you are helping?
   % else:
-  What is your address?
+  What is your permanent address?
   % endif
 fields:
   - code: |
-      users[0].address_fields(country_code=AL_DEFAULT_COUNTRY, default_state=AL_DEFAULT_STATE)      
+      users[0].address_fields(country_code=AL_DEFAULT_COUNTRY, default_state=AL_DEFAULT_STATE)
+validation code: |
+  if not users[0].address.state == "MN":
+    validation_error("The power of attorney must be for someone who lives in Minnesota", field="users[0].address.state")
+---
+id: decision maker signpost
+continue button field: decision_maker_signpost
+question: |
+  About the decision makers you can name
+subquestion: |
+  You can name two kinds of financial decision makers on this website:
+
+  1. People who can make decisions for you now. This kind of person is called
+     an attorneys in fact. And,
+  1. People who can only make decisions for you if the first people
+     are no longer able to do so, called successors.
+
+  You can also decide if the people who make decisions for you need to
+  agree on each decision before they make it or if they can act on their own.
+
+  If you are planning to name more than one person on this website,
+  take a minute to decide what job each person will have. Do you want
+  them to make financial decisions right away, or only if the first choice
+  decision maker cannot?
+
+  We will explain more about each kind of decision maker when we ask
+  for their names.
 ---
 id: name of the first attorney in fact
 sets:
@@ -264,16 +293,18 @@ sets:
   - attorneys[0].name.suffix
 question: |
   % if person_answering == "drafter":
-  Who will ${ users[0] } give power over their financial decisions?
+  Who will ${ users[0] } give power over their financial decisions right now?
   % else:
-  Who do you want to give power over your financial decisions?
+  Who do you want to give power over your financial decisions right now?
   % endif
 subquestion: |
   The person that you name is called an "attorney-in-fact" in Minnesota.
   
-  We will ask you later if you want to name more than one person. The additional people
-  can be backup (alternate) decision makers or they can act at the same time as 
-  the first person you name.
+  We will ask you later if you want to name more than one person.
+
+  You can name more than one person who will make decisions for you now. You can also
+  name backup decision makers who will only make decisions if the other person or
+  people are no longer able to.
 fields:
   - code: |
       attorneys[0].name_fields()
@@ -302,9 +333,9 @@ sets:
   - attorneys[i].name.suffix
 question: |
   % if person_answering == "drafter":
-  Who else do you want to name as a decision maker?
+  Who else do you want to name who can make decisions for ${ users.familiar() } right now?
   % else:
-  Who else do you want to give power over your financial decisions?
+  Who else do you want to give power to make financial decisions for you right now?
   % endif
 subquestion: |
   So far you have named ${ attorneys.complete_elements() }
@@ -318,6 +349,88 @@ fields:
     none of the above: A new address      
   - code: |
       attorneys[i].address_fields(country_code=AL_DEFAULT_COUNTRY, default_state=AL_DEFAULT_STATE, show_if={"variable": "attorneys[i].address", "is": None})
+---
+id: any successors
+question: |
+  Do you want to name any **backup** decision makers?
+subquestion: |
+  % if attorneys.number() > 1:
+  The people you name as **backup**, or **successor**
+  will only be able to make decisions if ${ attorneys.familiar() } are not able to.
+  % else:
+  The people you name as **backup**, or **successor**
+  will only be able to make decisions if ${ attorneys.familiar() } is not able to.
+  % endif
+
+  Most people name at least one backup decision maker.
+fields:
+  - Name backup decision makers?: successor_attorneys.there_are_any
+    datatype: yesnoradio
+---
+id: name of the first successor attorney in fact
+sets:
+  - successor_attorneys[0].name.first
+  - successor_attorneys[0].name.last
+  - successor_attorneys[0].name.middle
+  - successor_attorneys[0].name.suffix
+question: |
+  % if person_answering == "drafter":
+  Who will ${ users[0] } name as the first backup decision maker?
+  % else:
+  Who do you want to name as the first backup decision maker?
+  % endif
+subquestion: |
+  The person that you name is called a "successor attorney-in-fact" in Minnesota.
+  
+  They will only be able to make decisions if ${ attorneys.familiar() } can no 
+  longer do so.
+
+  We will ask you later if you want to name more than one person.
+fields:
+  - code: |
+      successor_attorneys[0].name_fields()
+  - An existing address: successor_attorneys[0].address
+    datatype: object_radio
+    choices: |
+      [users[0].address]
+    none of the above: A new address      
+  - code: |
+      successor_attorneys[0].address_fields(country_code=AL_DEFAULT_COUNTRY, default_state=AL_DEFAULT_STATE, show_if={"variable": "successor_attorneys[0].address", "is": None})
+---
+id: another successor attorney in fact
+question: |
+  Do you want to add another **backup** decision maker?
+subquestion: |
+  So far you have listed ${ successor_attorneys.complete_elements() }
+fields:
+  - no label: successor_attorneys.there_is_another
+    datatype: yesnoradio
+---
+id: name of the nth successor attorney in fact
+sets:
+  - successor_attorneys[i].name.first
+  - successor_attorneys[i].name.last
+  - successor_attorneys[i].name.middle
+  - successor_attorneys[i].name.suffix
+question: |
+  % if person_answering == "drafter":
+  Who else do you want to add as a backup decision maker?
+  % else:
+  Who else do you want to add as a backup decision maker?
+  % endif
+subquestion: |
+  So far you have named ${ successor_attorneys.complete_elements() }
+fields:
+  - code: |
+      successor_attorneys[i].name_fields()
+  - An existing address: successor_attorneys[i].address
+    datatype: object_radio
+    choices: |
+      [users[0].address] + [attorney.address for attorney in successor_attorneys.complete_elements()]
+    none of the above: A new address      
+  - code: |
+      successor_attorneys[i].address_fields(country_code=AL_DEFAULT_COUNTRY, default_state=AL_DEFAULT_STATE, show_if={"variable": "successor_attorneys[i].address", "is": None})
+
 ---
 id: How long do you want the power of attorney to last
 question: |
@@ -335,7 +448,6 @@ fields:
       is: "limited time"
   - "The power of attorney should continue if I am incapacitated": is_durable_poa
     datatype: yesno
-continue button field: aif_acts_independently
 ---
 id: independent authority
 question: |
@@ -555,12 +667,18 @@ review:
       ${ power_claims }
   - Edit: attorneys.revisit
     button: |
-      **Attorneys**
+      **Decision makers**
 
       % for item in attorneys:
         * ${ item }
       % endfor
+  - Edit: successor_attorneys.revisit
+    button: |
+      **Backup decision makers**
 
+      % for item in successor_attorneys:
+        * ${ item }
+      % endfor
   - Edit: power_bond_share_commodity
     button: |
       **Bond, share and commodity transactions**:
@@ -647,7 +765,7 @@ review:
 ---
 continue button field: attorneys.revisit
 question: |
-  Edit attorneys
+  Edit decision makers
 subquestion: |
   ${ attorneys.table }
 
@@ -655,6 +773,26 @@ subquestion: |
 ---
 table: attorneys.table
 rows: attorneys
+columns:
+  - Name: |
+      row_item.name.full() if defined("row_item.name.first") else ""
+  - Address: |
+      row_item.address.block() if defined("row_item.address.address") else ""
+edit:
+  - name.first
+  - address.address
+confirm: True
+---
+continue button field: successor_attorneys.revisit
+question: |
+  Edit backup decision makers
+subquestion: |
+  ${ successor_attorneys.table }
+
+  ${ successor_attorneys.add_action() }
+---
+table: successor_attorneys.table
+rows: successor_attorneys
 columns:
   - Name: |
       row_item.name.full() if defined("row_item.name.first") else ""
