@@ -492,15 +492,28 @@ question: |
   What can the people you name decide for you?
   % endif
 subquestion: |
-  The attorneys-in-fact that I name will be able to make decisions about:
+  The attorneys-in-fact that I name will be able to make decisions about: (click the :circle-question: icon to learn more)
 fields:
   - "Real estate": power_real_estate
     datatype: yesnoradio
+    help: |
+      If you grant this power, ${ attorneys.familiar() } will be able to enter
+      into all kinds of real estate transactions in your name.
+      
+      This includes the power to buy, sell, lease, change and manage property, 
+      as well as "any other act with respect to any estate or interest in 
+      real property."
+      
+      You can limit this power to specific properties in Minnesota.
   - Limit to specific properties: real_estate_limited
     datatype: yesno
     show if: power_real_estate
+    help: |
+      If you choose "yes" we will ask about the specific properties later.
   - "Lawsuits and legal claims": power_claims
     datatype: yesnoradio
+    help: |
+
   - "Bond, share and commodity transactions": power_bond_share_commodity
     datatype: yesnoradio
   - "Buy or change insurance": power_insurance
@@ -515,6 +528,17 @@ fields:
     datatype: yesnoradio
   - "Buy and sell my personal property": power_tangible_property
     datatype: yesnoradio
+    help: |
+      "Tangible" property is any property that you can touch - not counting 
+      real estate like buildings and land. 
+      
+      For example, a car is tangible, while stocks, bonds and copyrights are not.
+      
+      If you grant this power, ${ attorneys.familiar() } will be able to enter into
+      all kinds of transactions regarding your tangible personal property.
+      This includes the power to buy, sell, lease, change and manage property, as well 
+      as "any other acts with respect to any tangible personal property or interest 
+      in any tangible personal property."
   - "Help run my business": power_business
     datatype: yesnoradio
   #- "Grant all powers above": power_all_above
@@ -649,22 +673,33 @@ fields:
     help: |
       Like: _LOT 10 BLOCK 240 AND N. 30 FT OF LOT 11 BLOCK 240 COUNTY ..._
 ---
+table: real_estate_items.table
+rows: real_estate_items
+columns:
+  - County: |
+      row_item.county
+  - Description: |
+      single_paragraph(row_item.description)
+edit:
+  - county
+---
 code: |
   signature_fields = []
 ---
+need:
+  - real_estate_items.table
 id: mn powers of attorney review screen
 continue button field: review_mn_powers_of_attorney
 question: |
   Review your answers
 review:
-  - Edit: power_real_estate
+  - Edit: users.revisit
     button: |
-      **Real estate**:
-      ${ power_real_estate }
-  - Edit: power_claims
-    button: |
-      **Lawsuits and legal claims**:
-      ${ power_claims }
+      **Name of person giving power**
+
+      % for item in users:
+        * ${ item }
+      % endfor
   - Edit: attorneys.revisit
     button: |
       **Decision makers**
@@ -679,53 +714,42 @@ review:
       % for item in successor_attorneys:
         * ${ item }
       % endfor
-  - Edit: power_bond_share_commodity
+  - Edit: 
+      - power_real_estate
+      - recompute:
+        - real_estate_items.there_are_any
     button: |
-      **Bond, share and commodity transactions**:
-      ${ power_bond_share_commodity }
-  - Edit: power_insurance
-    button: |
-      **Buy or change insurance**:
-      ${ power_insurance }
-  - Edit: power_beneficiaries
-    button: |
-      **Beneficiary transactions**:
-      ${ power_beneficiaries }
-  - Edit: users.revisit
-    button: |
-      **Users**
+      **${ attorneys.familiar() } can make decisions about:**
 
-      % for item in users:
-        * ${ item }
-      % endfor
+      * Real estate: ${ yesno( power_real_estate ) }
+      % if real_estate_limited:
+            * Decision making over real estate is limited to these properties:
+      
+      ${ real_estate_items.table }
+
+      ${ real_estate_items.add_action() }
+
+      % endif
+      * Lawsuits and legal claims: ${ yesno( power_claims ) }
+      * Bond, share and commodity transactions: ${ yesno( power_bond_share_commodity ) }
+      * Buy or change insurance: ${ yesno( power_insurance ) }
+      * Beneficiary transactions: ${ yesno( power_beneficiaries ) }
+      * Records, reports and statements: ${ yesno( power_records ) }
+      * Military benefits: ${ yesno( power_military_benefits ) }
+      * Fiduciary transactions: ${ yesno( power_fiduciary ) }
+      * Buy and sell my personal property: ${ yesno( power_tangible_property ) }
+      * Help run my business: ${ yesno( power_business ) }
+      * Gift transactions: ${ yesno( power_gifts ) }
+      * Control over my bank accounts: ${ yesno( power_banking ) }
+      * Provide for my family: ${ yesno( power_family ) }
   - Edit: authority_gift_to_self
     button: |
       **Make gifts to themself**:
       ${ authority_gift_to_self }
-  - Edit: power_records
-    button: |
-      **Records, reports and statements**:
-      ${ power_records }
-  - Edit: power_military_benefits
-    button: |
-      **Military benefits**:
-      ${ power_military_benefits }
   - Edit: attorney_must_provide_accounting
     button: |
       **Attorney must provide accounting**:
       ${ attorney_must_provide_accounting }
-  - Edit: power_fiduciary
-    button: |
-      **Fiduciary transactions**:
-      ${ power_fiduciary }
-  - Edit: power_tangible_property
-    button: |
-      **Buy and sell my personal property**:
-      ${ power_tangible_property }
-  - Edit: power_business
-    button: |
-      **Help run my business**:
-      ${ power_business }
   - Edit: poa_expiration_date
     button: |
       **The power of attorney expires on**:
@@ -734,14 +758,6 @@ review:
     button: |
       **Grant all powers above**:
       ${ word(yesno(power_all_above)) }
-  - Edit: real_estate_items
-    button: |
-      **Real estate items**:
-      ${ real_estate_items }
-  - Edit: power_gifts
-    button: |
-      **Gift transactions**:
-      ${ power_gifts }
   - Edit: poa_expires
     button: |
       **The power of attorney is for a limited time**:
@@ -754,14 +770,6 @@ review:
     button: |
       **Each attorney in fact can act at the same time**:
       ${ word(yesno(aif_acts_independently)) }
-  - Edit: power_banking
-    button: |
-      **Control over my bank accounts**:
-      ${ power_banking }
-  - Edit: power_family
-    button: |
-      **Provide for my family**:
-      ${ power_family }
 ---
 continue button field: attorneys.revisit
 question: |
