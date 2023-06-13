@@ -270,7 +270,7 @@ subquestion: |
   You can name two kinds of financial decision makers on this website:
 
   1. People who can make decisions for you now. This kind of person is called
-     an attorneys in fact. And,
+     an attorney in fact. And,
   1. People who can only make decisions for you if the first people
      are no longer able to do so, called successors.
 
@@ -577,10 +577,39 @@ id: What limits will the power of attorney have
 question: |
   What limits will the power of attorney have?
 fields:
-  - The attorney-in-fact cannot make gifts to themself: authority_gift_to_self
+  - The attorneys-in-fact cannot make gifts to themselves: authority_gift_to_self
     datatype: noyes
-  - The attorney-in-fact must tell me regularly how they spend my money and make decisions for me : attorney_must_provide_accounting
+  - label: |
+      % if person_answering == "drafter":
+      The attorney-in-fact must tell ${ users.familiar() } regularly how they spend their money and make decisions for them
+      % else:
+      The attorney-in-fact must tell me regularly how they spend my money and make decisions for me
+      % endif
+    field: attorney_must_provide_accounting
     datatype: yesno
+  - note: |
+      <h2 class="h4 mt-2">${ attorneys }'s reports</h2>
+    show if: attorney_must_provide_accounting
+  - label: |
+      Who should ${ attorneys.familiar() } send the reports about their decisions to?
+      % if is_durable_poa:
+      [BR]
+      **Note**: because the power of attorney will last even if ${ users.familiar() } is
+      unable to make their own decisions any longer, **you should name at least one
+      other person** to get the reports.
+      % endif
+    field: accounting_goes_to
+    datatype: area
+    rows: 2
+    label above field: True
+    show if: attorney_must_provide_accounting
+  - How often should ${ attorneys.familiar() } make their reports?: accounting_update_schedule
+    help: |
+      For example, every 6 months.
+    datatype: area
+    rows: 2
+    show if: attorney_must_provide_accounting    
+    label above field: True
 continue button field: What_limits_will_the_power_of_attorney_have
 ---
 code: |
@@ -764,14 +793,15 @@ review:
       * Gift transactions: ${ yesno( power_gifts ) }
       * Control over my bank accounts: ${ yesno( power_banking ) }
       * Provide for my family: ${ yesno( power_family ) }
+      * All of the above: ${ yesno(showifdef("power_all_above")) }
   - Edit: authority_gift_to_self
     button: |
-      **Make gifts to themself**:
-      ${ authority_gift_to_self }
+      **Make gifts to themselves**:
+      ${ word(yesno(authority_gift_to_self)) }
   - Edit: attorney_must_provide_accounting
     button: |
       **Attorney must provide accounting**:
-      ${ attorney_must_provide_accounting }
+      ${ word(yesno(attorney_must_provide_accounting)) }
   - Edit: poa_expiration_date
     button: |
       **The power of attorney expires on**:
