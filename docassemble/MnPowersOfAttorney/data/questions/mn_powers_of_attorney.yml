@@ -541,14 +541,38 @@ fields:
       in any tangible personal property."
   - "Help run my business": power_business
     datatype: yesnoradio
-  #- "Grant all powers above": power_all_above
-  #  datatype: yesno
   - "Gift transactions": power_gifts
     datatype: yesnoradio
   - "Control over my bank accounts": power_banking
     datatype: yesnoradio
   - "Provide for my family": power_family
     datatype: yesnoradio
+  - label: |
+      <h2 class="h4">Do you want to grant all powers?</h2>
+
+      You selected all of the powers named above.
+      Do you mean to give ${ attorneys.familiar() } power over **all**
+      of your financial decision making?
+    field: power_all_above
+    datatype: yesnoradio
+    label above field: True
+    js show if: |
+      (val("power_real_estate") && 
+        val("power_real_estate") &&
+        val("power_real_estate") &&
+        val("power_bond_share_commodity") &&
+        val("power_insurance") &&
+        val("power_beneficiaries") &&
+        val("power_records") &&
+        val("power_military_benefits") &&
+        val("power_fiduciary") &&
+        val("power_tangible_property") &&
+        val("power_business") &&
+        val("power_gifts") &&
+        val("power_banking") &&
+        val("power_family")
+      )
+  
 continue button field: What_can_the_power_of_attorney_decide_for_you
 ---
 id: What limits will the power of attorney have
