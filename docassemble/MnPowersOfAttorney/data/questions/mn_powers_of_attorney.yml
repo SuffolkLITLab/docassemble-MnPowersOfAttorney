@@ -460,25 +460,23 @@ question: |
 subquestion: |
   % if person_answering == "drafter":
   If you make the decision making **independent** then each named person can
-  make decisions for ${ users.familiar() } right now.
-  
-  The default is that ${ attorneys[0] } will be able to make decisions for ${ users.familiar() }
-  right away and ${ comma_and_list(attorneys[1:]) } will only be able to make decisions
-  for ${ users.familiar() } if ${ attorneys[0] } cannot.
+  make decisions for ${ users.familiar() } on their own.
+
+  If you do not make the decision making independent, ${ attorneys } will need to 
+  agree about each decision they make about ${ users.familiar() }'s finances.
   % else:
   If you make the decision making **independent** then each named person can
-  make decisions for you right now.
-  
-  The default is that ${ attorneys[0] } will be able to make decisions for you
-  right away and ${ comma_and_list(attorneys[1:]) } will only be able to make decisions
-  for you if ${ attorneys[0] } cannot.
+  make decisions for you on their own.
+
+  If you do not make the decision making independent, ${ attorneys } will need to 
+  agree about each decision they make about your finances.
   % endif
 fields:
   - I want: aif_acts_independently  
     datatype: radio
     choices:
-      - Only ${ attorneys[0] } to make decisions for ${ users.familiar() if person_answering == "drafter" else "me" }, unless they are unable to: False
-      - ${ attorneys } to all be able to make decisions for ${ users.familiar() if person_answering == "drafter" else "me" } right away: True
+      - ${ attorneys.familiar() } to agree about each decision: False
+      - ${ attorneys.familiar() } to each be able to make their own decisions: True
 ---
 depends on: expiration_choice
 code: |
