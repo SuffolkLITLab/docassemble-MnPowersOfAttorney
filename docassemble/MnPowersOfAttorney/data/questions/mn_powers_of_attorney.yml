@@ -824,6 +824,7 @@ review:
       ${ word(yesno(aif_acts_independently)) }
 ---
 continue button field: attorneys.revisit
+id: "edit decision makers"
 question: |
   Edit decision makers
 subquestion: |
@@ -844,6 +845,7 @@ edit:
 confirm: True
 ---
 continue button field: successor_attorneys.revisit
+id: "edit backup decision makers"
 question: |
   Edit backup decision makers
 subquestion: |
@@ -865,6 +867,7 @@ confirm: True
 
 ---
 continue button field: users.revisit
+id: "edit users"
 question: |
   Edit users
 subquestion: |
